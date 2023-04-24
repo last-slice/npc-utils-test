@@ -1,923 +1,458 @@
-# @dcl-sdk/utils
 
-This library includes a number of helpful pre-built tools that offer simple solutions to common scenarios that you're likely to run into.
+# NPC-library
 
-- [Debug helpers](#debug-helpers)
-  - [Label](#label)
-  - [Cube](#cube)
-- [Tweens](#tweens)
-  - [Translate an entity](#translate-an-entity)
-  - [Rotate an entity](#rotate-an-entity)
-  - [Scale an entity](#scale-an-entity)
-  - [Non-linear changes](#non-linear-changes)
-  - [Stopping tweens and callbacks](#stopping-tweens-and-callbacks)
-- [Perpetual motions](#perpetual-motions)
-  - [Perpetual rotation](#perpetual-rotation)
-- [Path following](#path-following)
-  - [Straight path](#straight-path)
-  - [Smooth path](#smooth-path)
-  - [Stopping paths and callbacks](#stopping-paths-and-callbacks)
-- [Toggle](#toggle)
-- [Timers](#time)
-  - [Delay a function](#delay-a-function)
-  - [Repeat at an interval](#repeat-at-an-interval)
-  - [Canceling execution](#canceling-execution)
-- [Triggers](#triggers)
-  - [Create a trigger](#create-a-trigger)
-  - [Disable a trigger](#disable-a-trigger)
-  - [One time trigger](#one-time-trigger)
-  - [Trigger layers](#trigger-layers)
-- [Math](#math)
-  - [Remap](#remap)
-  - [World position](#world-position)
-  - [World rotation](#world-rotation)
-- [Action sequence](#action-sequence)
-  - [IAction](#iaction)
-  - [Sequence builder](#sequence-builder)
-  - [Sequence runner](#sequence-runner)
-  - [Full example](#full-example)
+A collection of tools for creating Non-Player-Characters (NPCs) with SDK7. These are capable of having conversations with the player, and play different animations.
 
-## Using the Utils library
+Capabilities of the NPCs in this library:
 
-To use any of the helpers provided by the utils library
+- Start a conversation when clicked or when walking near
+- Trigger any action when clicked or when walking near
+- Trigger any action when the player walks away
+- Turn around slowly to always face the player
+- Play an animation in the NPC 3d model, optionally returning to loop the idle animation afterwards
 
-1. Install it as an `npm` package. Run this command in your scene's project folder:
+The dialog messages can also require that the player chooses options, and any action can be triggered when the player picks an option or advances past a message.
+
+To use NPCs in your scene:
+
+1. Install the library as an npm bundle. Run this command in your scene's project folder:
 
 ```
-npm install @dcl-sdk/utils -B
+npm i @dcl-sdk/npc-utils @dcl-sdk/sdk-utils -B
 ```
 
 2. Run `dcl start` or `dcl build` so the dependencies are correctly installed.
 
-3. Import the library into the scene's script. Add this line at the start of TypeScript files that require it:
+3. Import the library into the scene's script. Add this line at the start of your `game.ts` file, or any other TypeScript files that require it:
 
 ```ts
-import * as utils from '@dcl-sdk/utils'
+import * as npc from '@dcl-sdk/npc-utils'
 ```
 
-4. In your TypeScript file, write `utils.` and let the suggestions of your IDE show the available helpers.
-
-## Debug helpers
-
-### Label
-
-Add a text label floating over an entity using `utils.addLabel`. It has two required arguments:
-
-- `text`: The string of text to display.
-- `parent`: The entity to set the label on.
+4. In your TypeScript file, call the `create` function passing it a `TransformType` and a `NPCData` object. The `NPCData` object requires a minimum of a `NPCType` and a function to trigger when the NPC is activated:
 
 ```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-
-const cube = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-utils.addLabel('Random cube', cube)
-```
-
-`utils.addLabel` also lets you set the following:
-
-- `billboard`: If true, label turns to always face player. True by default.
-- `color`: Text color. Black by default.
-- `size`: Text font size, 3 by default.
-- `textOffset`: Offset from parent entity's position. By default 1.5 meters above the parent.
-
-> Tip: `utils.addLabel` returns the created entity used for the text. You can then tweak this entity in any way you choose.
-
-### Debug cube
-
-Render a simple clickable cube to use as a trigger when debugging a scene with `utils.addTestCube`. It has two required arguments:
-
-- `transform`: The position, rotation and/or scale of the cube, expressed as a `TransformType` object, as gets passed when creating a `Transform` component.
-- `triggeredFunction`: A function that gets called every time the cube is clicked.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-
-utils.addTestCube(
-  {position: {x: 2, y: 1, z: 2}},
-  (event) => { console.log('Cube clicked') }
-)
-```
-
-`utils.addTestCube` also lets you set the following:
-
-- `label`: An optional label to display floating over the cube.
-- `color`: A color for the cube's material.
-- `sphere`: If true, it renders as a Sphere instead of a cube.
-- `noCollider`: If true, the cube won't have a collider and will let players walk through it.
-
-> Tip: `utils.addTestCube` returns the created entity for the cube. You can then tweak this entity in any way you choose.
-
-## Tweens
-
-### Translate an entity
-
-To change entity's position over a period of time, use the `utils.tweens.startTranslation`.
-
-This example moves an entity from one position to another over 2 seconds:
-
-```ts
-// Required to make scene work
-export * from '@dcl/sdk'
-// Import SDK functionality and utils library
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-// Create a box
-const box = utils.addTestCube()
-
-// Define start and end positions
-let startPos = Vector3.create(1, 1, 1)
-let endPos = Vector3.create(15, 1, 15)
-
-// Move a box
-utils.tweens.startTranslation(box, startPos, endPos, 2)
-```
-
-### Rotate an entity
-
-To rotate an entity over a period of time, from one direction to another, use `utils.tweens.startRotation`.
-
-This example rotates an entity from one directions to another over 2 seconds:
-
-```ts
-export * from '@dcl/sdk'
-import { Quaternion } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube()
-
-// Define start and end directions
-let startRot = Quaternion.fromEulerDegrees(90, 0, 0)
-let endRot = Quaternion.fromEulerDegrees(270, 0, 0)
-
-// Rotate a box
-utils.tweens.startRotation(box, startRot, endRot, 2)
-```
-
-### Scale an entity
-
-To adjust the scale of an entity over a period of time, from one size to another, use `utils.tweens.startScaling`.
-
-This example scales an entity from one size to another over 2 seconds:
-
-```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube()
-
-// Define start and end sizes
-let startSize = Vector3.create(1, 1, 1)
-let endSize = Vector3.create(0.75, 2, 0.75)
-
-// Scale a box
-utils.tweens.startScaling(box, startSize, endSize, 2)
-```
-
-### Non-linear changes
-
-All tweens accept an optional argument which sets the rate of change. By default, translation, rotation, or scaling occur at a linear rate, but this can be set to other options. `utils.InterpolationType` enumeration lists all available interpolation types.
-
-The following example moves a box following a quadratic ease-in rate:
-
-```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube()
-let startPos = Vector3.create(1, 1, 1)
-let endPos = Vector3.create(15, 1, 15)
-utils.tweens.startTranslation(box, startPos, endPos, 2, utils.InterpolationType.EASEINQUAD)
-```
-
-### Stopping tweens and callbacks
-
-`utils.tweens.stopTranslation`, `utils.tweens.stopRotation` and `utils.tweens.stopScaling` stop translation, rotation and scaling respectively.
-
-In the following example tweens affecting a box are stopped when player clicks on a sphere:
-
-```ts
-export * from '@dcl/sdk'
-import { Quaternion, Vector3, Color4 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube()
-utils.tweens.startTranslation(box, Vector3.create(1, 1, 1), Vector3.create(15, 1, 15), 10)
-utils.tweens.startRotation(box, Quaternion.fromEulerDegrees(0, 0, 0), Quaternion.fromEulerDegrees(0, 90, 0), 10)
-utils.tweens.startScaling(box, Vector3.create(1, 1, 1), Vector3.create(2, 2, 2), 10)
-
-const sphere = utils.addTestCube(
-  {position: {x: 2, y: 1, z: 1}},
-  function(event) {
-    utils.tweens.stopTranslation(box)
-    utils.tweens.stopRotation(box)
-    utils.tweens.stopScaling(box)
-  },
-  undefined, Color4.Red(), true
-)
-```
-
-All tweens accept an optional argument `onFinishCallback` which is executed when a tween is complete or when a tween is stopped explicitly via calls described above.
-
-The following example logs a message when the box finishes its movement.
-
-```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube()
-utils.tweens.startTranslation(
-  box, Vector3.create(1, 1, 1), Vector3.create(2, 1, 2), 2, utils.InterpolationType.LINEAR,
-  function() { console.log('Tween is done') }
-)
-```
-
-## Perpetual motions
-
-### Perpetual rotation
-
-To rotate an entity continuously, use `utils.perpetualMotions.startRotation`. The entity will keep rotating forever until it's explicitly stopped. `rotationVelocity` argument is a quaternion describing the desired rotation to perform each second second. For example `Quaternion.fromEulerDegrees(0, 45, 0)` rotates the entity on the Y axis at a speed of 45 degrees per second, meaning that it makes a full turn every 8 seconds.
-
-Rotation can be stopped by calling `utils.perpetualMotions.stopRotation`.
-
-In the following example, a cube rotates continuously until clicked:
-
-```ts
-export * from '@dcl/sdk'
-import { Quaternion } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube(
-  {position: {x: 1, y: 1, z: 1}},
-  function() { utils.perpetualMotions.stopRotation(box) }
-)
-
-utils.perpetualMotions.startRotation(box, Quaternion.fromEulerDegrees(0, 45, 0))
-```
-
-## Path following
-
-### Straight path
-
-To move an entity over several points of a path over a period of time, use `utils.paths.startStraightPath`. Along with an entity which will follow a path you must specify two arguments:
-
-- `points`: An array of `Vector3` positions that form the path.
-- `duration`: The duration (in seconds) of the whole path.
-
-There is one optional argument:
-
-- `faceDirection`: When set to true, an entity will be rotated to face the direction of its movement.
-
-This example moves an entity through four points over 10 seconds:
-
-```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-
-let path = [
-  Vector3.create(1, 1, 1),
-  Vector3.create(1, 1, 15),
-  Vector3.create(15, 1, 15),
-  Vector3.create(15, 1, 1)
-]
-
-utils.paths.startStraightPath(box, path, 10)
-```
-
-### Smooth path
-
-To make an entity follow a smooth path over a period of time, use `utils.paths.startSmoothPath`. The smooth path is composed of multiple straight line segments put together. You only need to supply a series of fixed path points and a smooth curve is drawn to pass through all of these. You must specify an amount of segments via `segmentCount` argument. `faceDirection` argument works for smooth paths too.
-
-This example makes entity follow a smooth path that's subdivided into 20 segments, over a period of 10 seconds. The curve passes through four key points.
-
-```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-
-let path = [
-  Vector3.create(5, 1, 5),
-  Vector3.create(5, 1, 11),
-  Vector3.create(11, 1, 11),
-  Vector3.create(11, 1, 5)
-]
-
-utils.paths.startSmoothPath(box, path, 10, 20)
-```
-
-If the first and last points of a smooth path are identical, the library tries to facilitate smooth orientation change during movement over a loop. In the example below a box loops through three points forever.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-import { Color4 } from '@dcl/sdk/math'
-
-// Path points
-const p0 = {x: 2, y: 1, z: 2}
-const p1 = {x: 8, y: 1, z: 2}
-const p2 = {x: 8, y: 1, z: 6}
-
-// Path points' markers
-utils.addTestCube({position: p0}, undefined, undefined, Color4.Red(), false, true)
-utils.addTestCube({position: p1}, undefined, undefined, Color4.Green(), false, true)
-utils.addTestCube({position: p2}, undefined, undefined, Color4.Blue(), false, true)
-
-const box = utils.addTestCube(
-  {position: p0, scale: {x: 1, y: 1, z: 2}},
-  undefined, undefined, Color4.Yellow(), false, true
-)
-
-function startPath() {
-  utils.paths.startSmoothPath(
-    // Set the last point of the path to be identical to the first one to achieve looping
-    box,
-    [p0, p1, p2, p0],
-    5,
-    50,
-    // Set faceDirection to true to align box's rotation with its movement's direction
-    true,
-    // When path is complete, start it again
-    function() { startPath() }
-  )
+export let myNPC = npc.create({position:  Vector3.create(8,0,8),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate:()=>{console.log('npc activated');}
 }
-
-startPath()
+)
 ```
 
-### Stopping paths and callbacks
-
-Just like tweens, paths can be stopped: use `utils.paths.stopPath` for that purpose. Again, like tweens, path starting functions accept optional `onFinishCallback` argument which is executed after a path finishes or is explicitly stopped.
-
-Paths also accept optional `onPointReachedCallback` argument which is executed when a path reaches one of its milestones (`points`).
-
-The following example logs a messages when the box finishes each segment of the path, and another when the entire path is done.
+5. Write a dialog script for your character, preferably on a separate file, making it of type `Dialog[]`.
 
 ```ts
-export * from '@dcl/sdk'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
+import { Dialog } from '@dcl-sdk/npc-utils'
 
-const box = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-
-let path = [
-  Vector3.create(5, 1, 5),
-  Vector3.create(5, 1, 11),
-  Vector3.create(11, 1, 11),
-  Vector3.create(11, 1, 5)
+export let ILoveCats: Dialog[] = [
+  {
+    text: `I really lo-ove cats`,
+    isEndOfDialog: true
+  }
 ]
-
-utils.paths.startStraightPath(
-  box, path, 10, false,
-  function() {
-    console.log('Path is complete')
-  },
-  function(pointIndex, pointCoords, nextPointCoords) {
-    console.log(`Reached point ${pointIndex}`)
-  }
-)
 ```
 
-## Toggle
+## NPC Default Behavior
 
-`utils.toggles.*` family of functions enables switching an entity between two possible states, running a specified callback on every transition.
+NPCs at the very least must have:
 
-`utils.toggles.addToggle` assigns an initial state (either `utils.ToggleState.On` or `utils.ToggleState.Off`) to an entity and the function to be run on a state change.
+- `position`: (_TransformType_) Must include position, rotation and scale.
+- `NPCData`: (_Data Object_) with a minimum of two variables
+	- `type`: (_NPCType_) you have the choice to use a custom GLB object or an `AvatarShape` for your npc
+		- `NPCType.CUSTOM`
+		- `NPCType.AVATAR` 
+	- `onActivate()`: (_()=> void_) A function to call when the NPC is activated.
 
-`utils.toggles.removeToggle` removes the toggle from an entity.
-
-Entity's state can be set explicitly via `utils.toggles.set` or flipped via `utils.toggles.flip`. Query entity's state by calling `utils.toggles.isOn`: it returns a boolean, where `true` means ON.
-
-Callback can be changed by calling `utils.toggles.setCallback`.
-
-The following example switches the color of a box between two colors each time it's clicked.
-
-```ts
-export * from '@dcl/sdk'
-import { Material, InputAction, pointerEventsSystem } from '@dcl/sdk/ecs'
-import { Color4 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube({position: {x: 5, y: 1, z: 5}})
-
-// Box is initally green
-Material.setPbrMaterial(box, {albedoColor: Color4.Green()})
-
-// Add a toggle
-utils.toggles.addToggle(box, utils.ToggleState.On, function(value) {
-  if (value == utils.ToggleState.On) {
-    // Set color to green
-    Material.setPbrMaterial(box, {albedoColor: Color4.Green()})
-  } else {
-    // Set color to red
-    Material.setPbrMaterial(box, {albedoColor: Color4.Red()})
-  }
-})
-
-// Listen for click on the box and toggle its state
-pointerEventsSystem.onPointerDown(
-  box,
-  function(event) { utils.toggles.flip(box)},
-  {
-    button: InputAction.IA_POINTER,
-    hoverText: 'click'
-  }
-)
-```
-
-### Combine toggle with a tween
-
-This example combines a toggle with a tween to switch an entity between two positions every time it's clicked.
+*if you decide to use a `NPCType.CUSTOM` GLB model for your avatar, you must pass in a model object inside the `NPCData`*
+ - `model`: (_string_) The path to a 3D model
 
 ```ts
-export * from '@dcl/sdk'
-import { InputAction, pointerEventsSystem } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-const box = utils.addTestCube({position: {x: 5, y: 1, z: 5}})
-
-// Define two positions for toggling
-let pos1 = Vector3.create(5, 1, 5)
-let pos2 = Vector3.create(5, 1, 6)
-
-// Box is moved after its state changes
-utils.toggles.addToggle(box, utils.ToggleState.Off, function(value) {
-  if (value == utils.ToggleState.On) {
-    utils.tweens.startTranslation(box, pos1, pos2, 1)
-  } else {
-    utils.tweens.startTranslation(box, pos2, pos1, 1)
-  }
-})
-
-// Listen for click on the box and toggle its state
-pointerEventsSystem.onPointerDown(
-  box,
-  function(event) { utils.toggles.flip(box)},
-  {
-    button: InputAction.IA_POINTER,
-    hoverText: 'click'
-  }
-)
-```
-
-## Timers
-
-These tools are all related to the passage of time in the scene.
-
-### Delay a function
-
-Use `utils.timers.setTimeout` to delay the execution of a function by a given amount of milliseconds.
-
-This example delays the logging of a message by 1000 milliseconds.
-
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-
-utils.timers.setTimeout(
-  function() { console.log('1 second passed')},
-  1000
-)
-```
-
-### Repeat at an interval
-
-Use `utils.timers.setInterval` to execute a function every `n` milliseconds.
-
-This example creates an entity that changes its scale to a random size every 2 seconds.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-import { Transform } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
-
-const box = utils.addTestCube()
-
-utils.timers.setInterval(function () {
-  let size = Math.random()
-  Transform.getMutable(box).scale = Vector3.create(size, size, size)
-}, 2000)
-```
-
-### Canceling execution
-
-Both `utils.timers.setInterval` and `utils.timers.setTimeout` return a unique `TimerId` which can be used to cancel delayed or repeated execution by calling `utils.timers.clearInterval` and `utils.timers.clearTimeout` respectively. In the example below a box keep changing its color every second until it's clicked on.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-import { Material, InputAction, pointerEventsSystem } from '@dcl/sdk/ecs'
-import { Color4 } from '@dcl/sdk/math'
-
-const box = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-
-// Store a timer id in a variable
-const timerId = utils.timers.setInterval(function () {
-  Material.setPbrMaterial(box, {albedoColor: Color4.create(Math.random(), Math.random(),  Math.random(), 1)})
-}, 1000)
-
-pointerEventsSystem.onPointerDown(
-  box,
-  // Cancel a timer when user clicks on a box
-  function(event) { utils.timers.clearInterval(timerId) },
-  {
-    button: InputAction.IA_POINTER,
-    hoverText: 'click'
-  }
-)
-```
-
-## Triggers
-
-`utils.triggers.*` family of functions powers trigger areas which can be added to entities and which report when intersections with other trigger areas arise or cease.
-
-### Create a trigger
-
-Use `utils.triggers.addTrigger` to add a trigger area to an entity. It has the following arguments:
-
-- `entity`: Trigger's owner entity. Trigger area's coordinates depend on `entity`'s Transform component.
-- `layerMask`: Specificies layers to which this trigger belongs to. The library provides eight layers: `utils.LAYER_1`, ... `utils.LAYER_8`. If an entity is supposed to belong to multiple layers, for example layer 1 and layer 3, set `layerMask` to a combination of layer constants separated by `|` (bitwise OR): `utils.LAYER_1 | utils.LAYER_3`. If an entity is supposed to belong to all 8 layers, set `layerMask` to `utils.ALL_LAYERS`. Default value of `layerMask` is `utils.NO_LAYERS`, i.e. an entity does not belong to any layer and won't be able to trigger other entities (it still can be triggered by others, see `triggeredByMask` below).
-- `triggeredByMask`: Specifies layers which can trigger an entity. For example, if an entity is supposed to be triggered by entities that belong to either or both layer 2 and layer 4, set `triggeredByMask` to `utils.LAYER_2 | utils.LAYER_4`. Default value of `triggeredByMask` is `utils.NO_LAYERS`, i.e. an entity won't be triggered by other entities at all.  When set to `utils.ALL_LAYERS` an entity will be triggered by all entities that belong to at least one layer.
-- `areas`: An array of shapes (either boxes or spheres) which describes trigger area. A box is indicated by the object `{type: 'box', position?: Vector3, scale?: Vector3}`, and a sphere by the object `{type: 'sphere', position?: Vector3, radius?: number}`. `position`, `scale` and `radius` fields are optional and default to `{x: 0, y: 0, z: 0}`, `{x: 1, y: 1, z: 1}` and `1` respectively. Please note that box's or sphere's coordinates are relative to `entity`'s Transform. Additionally, box areas always stay axis-aligned, disregarding `entity`'s rotation.
-- `onEnterCallback`: This function will be called when a trigger's area intersects with an area of another, layer-compatible trigger. It will receive an entity which owns intersecting trigger as a single argument.
-- `onExitCallback`: This function will be called when a trigger's area no longer intersects with an area of another trigger. It will receive an entity which owns formerly intersecting trigger as a single argument.
-- `debugColor`: Defines a color of trigger area's shapes when debug visualization is active: call `utils.triggers.enableDebugDraw(true)` to enable it. 
-
-The following example creates a trigger that changes its position randomly when triggered by the player. Please note that the library automatically creates a trigger area for the player entity: it's a box closely matching avatar's shape with `layerMask` set to `utils.LAYER_1` and `triggeredByMask` set to `utils.NO_LAYERS`.
-
-```ts
-export * from "@dcl/sdk"
-import { Transform } from "@dcl/sdk/ecs"
-import * as utils from '@dcl-sdk/utils'
-
-// Create a box with disabled collision
-const box = utils.addTestCube(
-  { position: {x: 2, y: 1, z: 2} },
-  undefined, undefined, undefined, undefined,
-  true
-)
-
-utils.triggers.addTrigger(box, utils.NO_LAYERS, utils.LAYER_1, [{type: 'box'}], function(otherEntity) {
-  console.log(`triggered by ${otherEntity}!`)
-  Transform.getMutable(box).position = {
-    x: 1 + Math.random() * 14,
-    y: 1,
-    z: 1 + Math.random() * 14
-  }
-})
-```
-
-> Tip: to set a custom shape and other parameters of player's trigger first remove a default trigger via `utils.triggers.removeTrigger(engine.PlayerEntity)` and then specify your own trigger via `utils.triggers.addTrigger(engine.PlayerEntity, ...)`.
-
-### Disable a trigger
-
-You can temporarily disable a trigger by calling `utils.triggers.enableTrigger(entity, false)`. Enable it again by calling `utils.triggers.enableTrigger(entity, true)`. Remove trigger altogether by calling `utils.triggers.removeTrigger(entity)`.
-
-### One time Trigger
-
-As a shortcut for creating a trigger area that is only actioned once when the player first walks in or out, use the `utils.triggers.oneTimeTrigger`. This function has same arguments as `utils.triggers.addTrigger`, apart for `onExitCallback`. This function is especially useful for optimizing the loading of a scene, so that certain elements aren't loaded till a player walks into an area.
-
-In the example below, the trigger area will only display welcome message the first time a player walks in. After that, the entity is removed from the scene.
-
-```ts
-export * from "@dcl/sdk"
-import { engine, Transform } from "@dcl/sdk/ecs"
-import * as utils from '@dcl-sdk/utils'
-
-const triggerEntity = engine.addEntity()
-Transform.create(triggerEntity)
-
-utils.triggers.oneTimeTrigger(
-  triggerEntity, utils.NO_LAYERS, utils.LAYER_1,
-  [{type: 'box', position: {x: 4, y: 1, z: 4}, scale: {x: 8, y: 1, z: 8}}],
-  function(otherEntity) {
-    console.log('Welcome!')
-  }
-)
-```
-
-### Trigger layers
-
-You can define different layers for triggers, and set which other layers can trigger it.
-
-The following example creates a scene that has:
-
-- food (green box)
-- mouse (blue sphere)
-- cat (red sphere)
-
-Food is triggered (or eaten) by both cat and mouse. Also, mice are eaten by cats, so a mouse's trigger area is triggered only by a cat.
-
-Cat and mouse always move towards the food. When food or mouse are eaten, they respawn in a random location.
-
-```ts
-export * from "@dcl/sdk"
-import { engine, Transform } from "@dcl/sdk/ecs"
-import * as utils from '@dcl-sdk/utils'
-import { Color4 } from "@dcl/sdk/math"
-
-// Define layers
-const FOOD_LAYER = utils.LAYER_1
-const MOUSE_LAYER = utils.LAYER_2
-const CAT_LAYER = utils.LAYER_3
-
-// Remove default trigger from a player so that they don't interfere
-utils.triggers.removeTrigger(engine.PlayerEntity)
-
-// Create food
-const food = utils.addTestCube(
-  {position: {x: 1 + Math.random() * 14, y: 0, z: 1 + Math.random() * 14}},
-  undefined, undefined, Color4.Green(), false, true
-)
-utils.triggers.addTrigger(
-  food, FOOD_LAYER, MOUSE_LAYER | CAT_LAYER,
-  [{type: 'box'}],
-  function(otherEntity) {
-    // Food was eaten either by cat or mouse, "respawn" it
-    Transform.getMutable(food).position = {
-	    x: 1 + Math.random() * 14,
-	    y: 0,
-	    z: 1 + Math.random() * 14
-    }
-    // Set mouse and cat moving towards food
-    utils.tweens.startTranslation(
-      mouse,
-      Transform.get(mouse).position,
-      Transform.get(food).position,
-      4
-    )
-    utils.tweens.startTranslation(
-      cat,
-      Transform.get(cat).position,
-      Transform.get(food).position,
-      4
-    )
-  }
-)
-
-// Create mouse
-const mouse = utils.addTestCube(
-  {
-    position: {x: 1 + Math.random() * 14, y: 0, z: 1 + Math.random() * 14},
-    scale: {x: 0.5, y: 0.5, z: 0.5}
-  },
-  undefined, undefined, Color4.Blue(), true, true
-)
-utils.triggers.addTrigger(
-  mouse, MOUSE_LAYER, CAT_LAYER,
-  [{type: 'sphere', radius: 0.25}],
-  function(otherEntity) {
-    // Mouse was eaten by cat, "respawn" it
-    Transform.getMutable(mouse).position = {
-	    x: 1 + Math.random() * 14,
-	    y: 0,
-	    z: 1 + Math.random() * 14
-    }
-    // Set mouse moving towards food
-    utils.tweens.startTranslation(
-      mouse,
-      Transform.get(mouse).position,
-      Transform.get(food).position,
-      4
-    )
-  }
-)
-
-// Create cat
-const cat = utils.addTestCube(
-  {position: {x: 1 + Math.random() * 14, y: 0, z: 1 + Math.random() * 14}},
-  undefined, undefined, Color4.Red(), true, true
-)
-utils.triggers.addTrigger(
-  cat, CAT_LAYER, CAT_LAYER,
-  [{type: 'sphere', radius: 0.5}]
-)
-
-// Set mouse and cat moving towards food
-utils.tweens.startTranslation(
-  mouse,
-  Transform.get(mouse).position,
-  Transform.get(food).position,
-  4
-)
-utils.tweens.startTranslation(
-  cat,
-  Transform.get(cat).position,
-  Transform.get(food).position,
-  4
-)
-```
-
-## Math
-
-### Remap
-
-`utils.remap` maps a value from one range of values to its equivalent, scaled in proportion to another range of values, using maximum and minimum. It takes the following arguments:
-
-- `value`: Input number to convert
-- `min1`: Minimum value in the range of the input.
-- `max1`: Maximum value in the range of the input.
-- `min2`: Minimum value in the range of the output.
-- `max2`: Maximum value in the range of the output.
-
-The following example maps the value _5_ from a scale of 0 to 10 to a scale of 300 to 400. The resulting value is 350, as it keeps the same proportion relative to the new maximum and minimum values.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-
-let input = 5
-let result = utils.remap(input, 0, 10, 300, 400)
-console.log(result)
-```
-
-### World position
-
-If an entity is parented to another entity, or to the player, then its Transform position will be relative to its parent. To find what its global position is, taking into account any parents, use `utils.getWorldPosition`. It returns a `Vector3` object, with the resulting position of adding the given entity and all its chain of parents.
-
-The following example sets a cube as a child of another cube, and logs its world position.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-import { Transform } from '@dcl/sdk/ecs'
-
-const cube = utils.addTestCube({position: {x: 1, y: 1, z: 1}})
-const childCube = utils.addTestCube({position: {x: 0, y: 1, z: 0}})
-Transform.getMutable(childCube).parent = cube
-
-const worldPos = utils.getWorldPosition(childCube)
-console.log(`${worldPos.x} ${worldPos.y} ${worldPos.z}`)
-```
-
-### World rotation
-
-If an entity is parented to another entity, or to the player, then its Transform rotation will be relative to its parent. To find what its global rotation is, taking into account any parents, use `utils.getWorldRotation`. It returns a `Quaternion` object, with the resulting rotation of multiplying the given entity to all its chain of parents.
-
-The following example sets a cube as a child of another cube, and logs its world rotation.
-
-```ts
-export * from '@dcl/sdk'
-import * as utils from '@dcl-sdk/utils'
-import { Transform } from '@dcl/sdk/ecs'
-import { Quaternion } from '@dcl/sdk/math'
-
-const cube = utils.addTestCube({
-  position: {x: 1, y: 1, z: 1},
-  rotation: Quaternion.fromEulerDegrees(0, 30, 0)
-})
-const childCube = utils.addTestCube({
-  position: {x: 0, y: 1, z: 0},
-  rotation: Quaternion.fromEulerDegrees(0, 60, 0)
-})
-Transform.getMutable(childCube).parent = cube
-
-const worldRot = Quaternion.toEulerAngles(
-  utils.getWorldRotation(childCube)
-)
-console.log(`${worldRot.x} ${worldRot.y} ${worldRot.z}`)
-```
-
-## Action sequence
-
-Use an action sequence to play a series of actions one after another.
-
-### IAction
-
-The `actions.IAction` interface defines the actions that can be added into a sequence. It includes:
-
-- `hasFinished`: Boolean for the state of the action, wether it has finished its execution or not.
-- `onStart()`: First method that is called upon the execution of the action.
-- `update()`: Called on every frame on the action's internal update.
-- `onFinish()`: Called when the action has finished executing.
-
-### Sequence builder
-
-This object creates action sequences, using simple building blocks.
-
-The `actions.SequenceBuilder` exposes the following methods:
-
-- `then()`: Enqueue an action so that it's executed when the previous one finishes.
-- `if()`: Use a condition to branch the sequence
-- `else()`: Used with if() to create an alternative branch
-- `endIf()`: Ends the definition of the conditional block
-- `while()`: Keep running the actions defined in a block until a condition is no longer met.
-- `breakWhile()`: Ends the definition of the while block
-
-### Sequence runner
-
-The `actions.SequenceRunner` object takes care of running sequences created by `actions.SequenceBuilder`. It exposes the following methods:
-
-- `startSequence()`: Starts a sequence of actions
-- `setOnFinishCallback()`: Sets a callback for when the whole sequence is finished
-- `isRunning()`: Returns a boolean that determines if the sequence is running
-- `stop()`: Stops a running the sequence
-- `resume()`: Resumes a stopped sequence
-- `reset()`: Resets a sequence so that it starts over
-- `destroy()`: Removes a sequence from the engine
-
-### Full example
-
-The following example creates a box that changes its scale until clicked. Then it resets its scale and moves.
-
-```ts
-export * from '@dcl/sdk'
-import { engine, Transform, Entity } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
-import * as utils from '@dcl-sdk/utils'
-
-// Set clicked flag
-let boxClicked = false
-
-// Create box entity
-const box = utils.addTestCube(
-  {position: {x: 14, y: 0, z: 14}},
-  (e) => { boxClicked = true }
-)
-
-// Use IAction to define action for scaling
-class ScaleAction implements utils.actions.IAction {
-  hasFinished: boolean = false
-  entity: Entity
-  scale: Vector3
-
-  constructor(entity: Entity, scale: Vector3) {
-    this.entity = entity
-    this.scale = scale
-  }
-
-  // Method when action starts
-  onStart(): void {
-    const transform = Transform.get(this.entity)
-    this.hasFinished = false
-
-    utils.tweens.startScaling(
-      this.entity,
-      transform.scale,
-      this.scale,
-      1.5,
-      utils.InterpolationType.EASEINQUAD,
-      () => {this.hasFinished = true}
-    )
-  }
-  // Method to run on every frame
-  update(dt: number): void {}
-  // Method to run at the end
-  onFinish(): void {}
+export let myNPC = npc.create({position:  Vector3.create(8,0,8),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate:()=>{console.log('npc activated');}
 }
-
-// Use IAction to define action for translation
-class MoveAction implements utils.actions.IAction {
-  hasFinished: boolean = false
-  entity: Entity
-  position: Vector3
-
-  constructor(entity: Entity, position: Vector3) {
-    this.entity = entity
-    this.position = position
-  }
-
-  onStart(): void {
-    const transform = Transform.get(this.entity)
-
-    utils.tweens.startTranslation(
-      this.entity,
-      transform.position,
-      this.position,
-      4,
-      utils.InterpolationType.LINEAR,
-      () => { this.hasFinished = true }
-    )
-  }
-
-  update(dt: number): void {}
-
-  onFinish(): void {}
-}
-
-// Use sequence builder to create a sequence
-const builder = new utils.actions.SequenceBuilder()
-  .while(() => !boxClicked)
-  .then(new ScaleAction(box, Vector3.create(1.5, 1.5, 1.5)))
-  .then(new ScaleAction(box, Vector3.create(0.5, 0.5, 0.5)))
-  .endWhile()
-  .then(new ScaleAction(box, Vector3.create(1, 1, 1)))
-  .then(new MoveAction(box, Vector3.create(1, 0, 1)))
-
-// Run built sequence and destroy it once it finishes
-const runner = new utils.actions.SequenceRunner(
-  engine, builder, () => { runner.destroy() }
 )
+```
+
+With this default configuration, the NPC behaves in the following way:
+
+- The `onActivate()` function is called when pressing E on the NPC, and when the player walks near at a distance of 6 meters.
+- Once activated, there's a cooldown period of 5 seconds, that prevents the NPC to be activated again.
+- After walking away from the NPC, if its dialog window was open it will be closed, and if the NPC was rotating to follow the player it will stop.
+- If the NPC already has an open dialog window, clicking on the NPC won't do anything, to prevent accidentally clicking on it while flipping through the conversation.
+- If the NPC has an animation named 'Idle', it will play it in a loop. If other non-looping animations are played, it will return to looping the 'Idle' animation after the indicated duration.
+
+Many of these behaviors can be overridden or tweaked with the exposed properties.
+
+## NPC Additional Properties
+
+To configure other properties of an NPC, add a fourth argument as an `NPCData` object. This object can have the following optional properties:
+
+- `idleAnim`: _(string)_ Name of the idle animation in the model. This animation is always looped. After playing a non-looping animation it returns to looping this one.
+- `faceUser`: _(boolean)_ Set if the NPC rotates to face the user while active.
+- `dialogSound`: _(string)_ Path to sound file to play once for every entry shown on the UI. If the dialog entry being shown has an `audio` field, the NPC will play the file referenced by the `audio` field instead.
+- `coolDownDuration`: _(number)_ Change the cooldown period for activating the NPC again. The number is in seconds.
+- `hoverText`: _(string)_ Set the UI hover feedback when pointing the cursor at the NPC. _TALK_ by default.
+- `onlyClickTrigger`: _(boolean)_ If true, the NPC can't be activated by walking near. Just by clicking on it or calling its `activate()` function.
+- `onlyETrigger`: _(boolean)_ If true, the NPC can't be activated by walking near. Just by pressing the E key on it or calling its `activate()` function.
+- `onlyExternalTrigger`: _(boolean)_ If true, the NPC can't be activated by clicking, pressing E, or walking near. Just by calling its `activate()` function.
+- `reactDistance`: _(number)_ Radius in meters for the player to activate the NPC or trigger the `onWalkAway()` function when leaving the radius.
+- `continueOnWalkAway`: _(boolean)_ If true,when the player walks out of the `reactDistance` radius, the dialog window stays open and the NPC keeps turning to face the player (if applicable). It doesn't affect the triggering of the `onWalkAway()` function.
+- `onWalkAway`: (_()=> void_) Function to call every time the player walks out of the `reactDistance` radius.
+- `walkingAnim`: _(string)_ Name of the walking animation on the model. This animation is looped when calling the `followPath()` function.
+- `walkingSpeed`: _(number)_ Speed of the NPC when walking. By default _2_.
+- `path`: _(Vector3)_ Default path to walk. If a value is provided for this field on NPC initialization, the NPC will walk over this path in loop from the start.
+- `noUI`: _(boolean)_ If true, no UI object is built for UI dialogs for this NPC. This may help optimize the scene if this feature is not used.
+
+```ts
+export let myNPC = npc.create({position:  Vector3.create(8,0,8),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate: ()=>{console.log('npc activated');},
+	onWalkAway: ()=>{console.log('test on walk away function')},
+	faceUser: true,
+	reactDistance: 3,
+	idleAnim: 'idle1',
+	walkingAnim: 'walk1',
+	hoverText: 'Activate',
+	continueOnWalkAway: true,
+	onlyClickTrigger: false,
+	onlyExternalTrigger: false
+}
+)
+```
+
+## Get NPC Data
+
+```ts
+npc.getData(myNPC)
+```
+
+There are several properties you can check on an NPC to know what its current state is:
+
+- `.state`: An enum value of type `NPCState`. Supported values are `NPCState.STANDING` (default), `NPCState.TALKING`, and `NPCState.FOLLOWPATH`. `TALKING` is applied when the dialog window is opened, and set back to `STANDING` when the window is closed. `FOLLOWPATH` is applied when the NPC starts walking, and set back to `STANDING` when the NPC finishes its path or is stopped.
+- `.introduced`: Boolean, false by default. Set to true if the NPC has spoken to the player at least once in this session.
+- `.visible`: Returns a Boolean, false by default. True if the dialog window for this NPC is currently open.
+- `.inCooldown`: Boolean, false by default. True if the NPC was recently activated and it's now in cooldown. The NPC won't respond to being activated till `inCooldown` is false.
+
+> TIP: If you want to force an activation of the NPC in spite of the `inCooldown` value, you can force this value to true before activating.
+
+## NPC Callable Actions
+
+An NPC object has several callable functions that come with the class:
+
+### Talk
+
+To start a conversation with the NPC using the dialog UI, call the `talk()` function. The function takes the following **required** parameter:
+
+- `script`: _(Dialog[])_ This array contains the information to manage the conversation, including events that may be triggered, options to choose, etc.
+
+It can also take the following optional parameters:
+
+- `startIndex`: _(number | string)_ The _Dialog_ object from the `script` array to open first. By default this is _0_, the first element of the array. Pass a number to open the entry on a given array position, or pass a string to open the entry with a `name` property matching that string.
+- `duration`: _(number)_ Number of seconds to wait before closing the dialog window. If no value is set, the window is kept open till the player reaches the end of the conversation or something else closes it.
+
+```ts
+npc.talk(myNPC,myScript, 0)
+```
+
+Learn how to build a script object for NPCs in a section below.
+
+### Play Animations
+
+By default, the NPC will loop an animation named 'Idle', or with a name passed in the `idleAnim` parameter.
+
+Make the NPC play another animation by calling the `playAnimation()` function. The function takes the following **required** parameter:
+
+- `animationName`: _(string)_ The name of the animation to play.
+
+It can also take the following optional parameters:
+
+- `noLoop`: _(boolean)_ If true, plays the animation just once. Otherwise, the animation is looped.
+- `duration`: _(number)_ Specifies the duration in seconds of the animation. When finished, it returns to playing the idle animation.
+
+> Note: If `noLoop` is true but no `duration` is set, the model will stay still after playing the animation instead of returning to the idle animation.
+
+```ts
+npc.playAnimation(myNPC, `Head_Yes`, true, 2.63)
+```
+
+### Change idle animation
+
+The NPC's idle animation is looped by default whenever the NPC is not playing any other animations. In some cases you may want to have different idle animations depending on the circumstances, like while in a conversation, or if the NPC changes its general attitude after some event.
+
+You set the NPC's idle animation when creating the NPC, using the `idleAnim` field. To change this animation at some later time, use `changeIdleAnim()`.
+
+The `changeIdleAnim()` function takes two arguments:
+
+- `animation`: The name of the new animation to set as the idle animation
+- `play`: Optionally pass this value as _true_ if you want this new animation to start playing right away.
+
+```ts
+npc.changeIdleAnim(myNPC,`AngryIdle`, true)
+```
+
+### Activate
+
+The `activate()` function can be used to trigger the `onActivate()` function, as an alternative to pressing E or walking near.
+
+```ts
+npc.activate(myNPC)
+```
+
+The `activate()` function is callable even when in cool down period, and it doesn't start a new cool down period.
+
+### Stop Walking
+
+If the NPC is currently walking, call `stopWalking()` to stop it moving and return to playing its idle animation.
+
+```ts
+npc.stopWalking(myNPC)
+```
+
+`stopWalking()` can be called with no parameters, or it can also be called with:
+
+- `duration`: Seconds to wait before starting to walk again. If not provided, the NPC will stop walking indefinitely.
+
+> Note: If the NPC is has its dialog window open when the timer for the `duration` ends, the NPC will not return to walking.
+
+To make the NPC play a different animation from idle when paused, call `playAnimation()` after `stopWalking()`.
+
+### Follow Path
+
+Make an NPC walk following a path of `Vector3` points by calling `followPath()`. While walking, the NPC will play the `walkingAnim` if one was set when defining the NPC. The path can be taken once or on a loop.
+
+`followPath()` can be called with no parameters if a `path` was already provided in the NPC's initialization or in a previous calling of `followPath()`. If the NPC was previously in the middle of walking a path and was interrupted, calling `followPath()` again with no arguments will return the NPC to that path.
+
+```ts
+npc.followPath(myNPC)
+```
+
+> Note: If the NPC is initialized with a `path` value, it will start out walking that path in a loop, no need to run `followPath()`.
+
+`followPath()` has a single optional parameter of type `FollowPathData`. This object may have the following optional fields:
+
+- path: Array of `Vector3` positions to walk over.
+- speed: Speed to move at while walking this path. If no `speed` or `totalDuration` is provided, it uses the NPC's `walkingSpeed`, which is _2_ by default.
+- totalDuration: The duration in _seconds_ that the whole path should take. The NPC will move at the constant speed required to finish in that time. This value overrides that of the _speed_.
+- loop: _boolean_ If true, the NPC walks in circles over the provided set of points in the path. _false_ by default, unless the NPC is initiated with a `path`, in which case it starts as _true_.
+- curve: _boolean_ If true, the path is traced a single smooth curve that passes over each of the indicated points. The curve is made out of straight-line segments, the path is stored with 4 times as many points as originally defined. _false_ by default.
+- startingPoint: Index position for what point to start from on the path. _0_ by default.
+- onFinishCallback: Function to call when the NPC finished walking over all the points on the path. This is only called when `loop` is _false_.
+- onReachedPointCallback: Function to call once every time the NPC reaches a point in the path.
+
+```ts
+export let myNPC = npc.create({position:  Vector3.create(8,0,8),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate: ()=>{console.log('npc activated');},
+	onWalkAway: ()=>{console.log('test on walk away function')},
+	faceUser: true,
+	reactDistance: 3,
+	idleAnim: 'idle1',
+	walkingAnim: 'walk1',
+	hoverText: "Activate"
+}
+)
+
+npc.followPath(myNPC,
+{
+	path:path,
+    loop:true,
+    pathType: npc.NPCPathType.RIGID_PATH,
+    onFinishCallback:()=>{console.log('path is done')},
+    onReachedPointCallback:()=>{console.log('ending oint')},
+    totalDuration: 20
+}
+)
+
+```
+
+#### NPC Walking Speed
+
+The following list of factors are used to determine speed in hierarchical order:
+
+- `totalDuration` parameter set when calling `followPath()` is used over the total distance travelled over the path.
+- `speed` parameter set when calling `followPath()`
+- `walkingSpeed` parameter set when initializing NPC
+- Default value _2_.
+
+#### Joining the path
+
+If the NPC's current position when calling `followPath()` doesn't match the first position in the `path` array (or the one that matches the `startingPoint` value), the current position is added to the `path` array. The NPC will start by walking from its current position to the first point provided in the path.
+
+The `path` can be a single point, and the NPC will then walk a from its current position to that point.
+
+> Note: If the speed of the NPC is determined by a `totalDuration` value, the segment that the NPC walks to join into the path is counted as part of the full path. If this segment is long, it will increase the NPC walking speed so that the full path lasts as what's indicated by the `totalDuration`.
+
+In this example the NPC is far away from the start of the path. It will first walk from _10, 0, 10_ to _2, 0, 2_ and then continue the path.
+
+```ts
+export let myNPC = npc.create({position:  Vector3.create(10,0,10),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate: ()=>{console.log('npc activated');},
+}
+)
+npc.followPath(myNPC,
+{
+  path: [new Vector3(2, 0, 2), new Vector3(4, 0, 4), new Vector3(6, 0, 6)]
+})
+```
+
+#### Example Interrupting the NPC
+
+In the following example, an NPC starts roaming walking over a path, pausing on every point to call out for its lost kitten. If the player activates the NPC (by pressing E on it or walking near it) the NPC stops, and turns to face the player and talk. When the conversation is over, the NPC returns to walking its path from where it left off.
+
+```ts
+export let myNPC = npc.create({position:  Vector3.create(10,0,10),rotation:Quaternion.Zero(), scale:  Vector3.create(1,1,1)},
+//NPC Data Object
+{ 
+	type: npc.NPCType.CUSTOM,
+	model: 'models/npc.glb',
+	onActivate: ()=>{
+		npc.stopWalking(myNPC);
+		npc.talk(myNPC, lostCat, 0)
+		console.log('npc activated');
+	},
+	walkingAnim: 'walk1',
+	faceUser:true
+}
+)
+
+npc.followPath(myNPC,
+{
+  path: [new Vector3(4, 0, 30), new Vector3(6, 0, 29), new Vector3(15, 0, 25)],
+  loop: true,
+  onReachedPointCallback: () => {
+    npc.stopWalking(myNPC, 3)
+    npc.playAnimation(myNPC, `Cocky`, true, 2.93)
+  }
+})
+
+export let lostCat: Dialog[] = [
+  {
+    text: `I lost my cat, I'm going crazy here`
+  },
+  {
+    text: `Have you seen it anywhere?`
+  },
+  {
+    text: `Ok, I'm gonna go back to looking for it`,
+    triggeredByNext: () => {
+      npc.followPath(myNPC)
+    },
+    isEndOfDialog: true
+  }
+]
+```
+
+### End interaction
+
+The `endInteraction()` function can be used to abruptly end interactions with the NPC.
+
+If applicable, it closes the dialog UI, hides speech bubbles, and makes the NPC stop rotating to face the player.
+
+```ts
+npc.endInteraction(myNPC)
+```
+
+As an alternative, you can call the `handleWalkAway()` function, which has the same effects (as long as `continueOnWalkAway` isn't set to true), but also triggers the `onWalkAway()` function.
+
+## NPC Dialog Window
+
+You can display an interactive dialog window to simulate a conversation with a non-player character (NPC).
+
+The conversation is based on a script in JSON format. The script can include questions that can take you forward or backward, or end the conversation.
+
+<img src="screenshots/NPC1.png" width="500">
+
+### The NPC script
+
+Each entry on the script must include at least a `text` field, but can include several more fields to further customize it.
+
+Below is a minimal dialog.
+
+```ts
+export let NPCTalk: Dialog[] = [
+  {
+    text: 'Hi there'
+  },
+  {
+    text: 'It sure is nice talking to you'
+  },
+  {
+    text: 'I must go, my planet needs me',
+    isEndOfDialog: true
+  }
+]
+```
+
+The player advances through each entry by clicking the mouse button. Once the last is reached, clicking again closes the window, as it's marked as `isEndOfDialog`.
+
+The script must adhere to the following schema:
+
+```ts
+class Dialog {
+  text: string
+  fontSize?: number
+  typeSpeed?: number
+  isEndOfDialog?: boolean
+  audio?: string
+}
+```
+
+> Note: A `Dialog` object can be used as an input both for the `talk()` function (that is displayed in the UI), and the `talkBubble()` function (that is displayed in a floating bubble over the NPC). Properties marked with `*` are only applicable to UI dialogs. 
+
+
+You can set the following fields to change the appearance of a dialog:
+
+- `text`: The dialog text
+- `fontSize`: Size of the text
+
+Other fields:
+- `audio`: String with the path to an audio file to play once when this dialog is shown on the UI.
+- `typeSpeed`: The text appears one character at a time, simulating typing. Players can click to skip the animation. Tune the speed of this typing (30 by default) to go slower or faster. Set to _-1_ to skip the animation.
+
+
+## Contribute
+
+In order to test changes made to this repository in active scenes, do the following:
+
+1. Run `npm run build` for the internal files of the library to be generated
+2. Run `npm run link` on this repository
+3. On a new Decentraland scene, import this library as you normally would and include the tests you need
+4. On the scene directory, run `npm link @dcl-sdk/npc-utils`
+
+> Note: When done testing, run `npm unlink` on both folders, so that the scene stops using the local version of the library.
+
+
+## CI/CD
+
+This repository uses `semantic-release` to automatically release new versions of the package to NPM.
+
+Use the following convention for commit names:
+
+`feat: something`: Minor release, every time you add a feature or enhancement that doesn’t break the api.
+
+`fix: something`: Bug fixing / patch
+
+`chore: something`: Anything that doesn't require a release to npm, like changing the readme. Updating a dependency is **not** a chore if it fixes a bug or a vulnerability, that's a `fix`.
+
+If you break the API of the library, you need to do a major release, and that's done a different way. You need to add a second comment that starts with `BREAKING CHANGE`, like:
+
+```
+commit -m "feat: changed the signature of a method" -m "BREAKING CHANGE: this commit breaks the API, changing foo(arg1) to foo(arg1, arg2)"
 ```
